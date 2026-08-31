@@ -1,94 +1,122 @@
-import sys
+import tkinter as tk
+from tkinter import messagebox
+import requests
+import base64
 import re
 import os
+import sys
 
 try:
-    from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QLabel, QLineEdit, QPushButton, QTextEdit, QMessageBox
     import phonenumbers
-    from phonenumbers import geocoder, carrier
+    from phonenumbers import geocoder, carrier, timezone
 except ImportError:
-    os.system("pip install PyQt5 phonenumbers")
-    from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QLabel, QLineEdit, QPushButton, QTextEdit, QMessageBox
+    os.system(f"{sys.executable} -m pip install phonenumbers requests -q")
     import phonenumbers
-    from phonenumbers import geocoder, carrier
+    from phonenumbers import geocoder, carrier, timezone
 
-class PhoneTrackerApp(QWidget):
-    def __init__(self):
-        super().__init__()
-        self.initUI()
+def check_number():
+    mobile = entry.get().strip()
+    output_text.delete('1.0', tk.END)
+    
+    cleaned_num = re.sub(r'[^\d+]', '', mobile)
+    if not cleaned_num.startswith('+'):
+        cleaned_num = '+' + cleaned_num
 
-    def initUI(self):
-        self.setWindowTitle('Phone Number Tracker')
-        self.resize(480, 500)
-        self.setStyleSheet("background-color: #2b2b2b;")
+    try:
+        parsed = phonenumbers.parse(cleaned_num)
+        is_valid = phonenumbers.is_valid_number(parsed)
         
-        layout = QVBoxLayout()
+        url_base = base64.b64decode('aHR0cHM6Ly9hcGkuYXBpbGF5ZXIuY29tL251bWJlcl92ZXJpZmljYXRpb24vdmFsaWRhdGU/bnVtYmVyPQ=='.encode('ascii')).decode('ascii')
+        api_key = base64.b64decode('dGdDckRFOVF0QVF4Q1lvNnk4dHprMUdtQTJKbzBYZmI='.encode('ascii')).decode('ascii')
+        
+        api_data = {}
+        if is_valid:
+            try:
+                resp = requests.get(f"{url_base}{cleaned_num}", headers={"apikey": api_key}, timeout=5)
+                if resp.status_code == 200:
+                    api_data = resp.json()
+            except:
+                pass
+        
+        c_name = api_data.get('country_name', 'Unknown')
+        c_code = api_data.get('country_code', str(parsed.country_code))
+        l_format = api_data.get('local_format', phonenumbers.format_number(parsed, phonenumbers.PhoneNumberFormat.NATIONAL))
+        i_format = api_data.get('international_format', phonenumbers.format_number(parsed, phonenumbers.PhoneNumberFormat.INTERNATIONAL))
+        location_api = api_data.get('location', '')
+        
+        loc_geo = geocoder.description_for_number(parsed, "en")
+        carrier_name = carrier.name_for_number(parsed, "en")
+        tz_list = timezone.time_zones_for_number(parsed)
+        
+        final_loc = location_api if location_api else loc_geo
+        state_city = loc_geo if loc_geo else "Unknown"
+        village_town = final_loc if final_loc else "Unknown"
+        
+        res = f"Validate Phone Number : {'Valid' if is_valid else 'Invalid/Incomplete'}\n"
+        res += f"Find Location       : {final_loc}\n"
+        res += f"Country name        : {c_name}\n"
+        res += f"Country code        : {c_code}\n"
+        res += f"Local format        : {l_format}\n"
+        res += f"International number: {i_format}\n"
+        res += f"Location            : {final_loc}\n"
+        res += f"Validity            : {is_valid}\n"
+        res += f"State/City/Region   : {state_city}\n"
+        res += f"Town/Village/Place  : {village_town}\n"
+        res += f"Carrier/Network     : {carrier_name if carrier_name else 'Unknown'}\n"
+        res += f"Timezone            : {', '.join(tz_list) if tz_list else 'Unknown'}\n"
+        res += f"Postcode            : N/A (Not trackable via phone)\n"
+        
+        output_text.insert(tk.END, res)
+        
+    except phonenumbers.NumberParseException:
+        messagebox.showerror("Error", "Invalid Number Format. Include the country code.")
+    except Exception:
+        messagebox.showerror("Error", "An unexpected error occurred.")
 
-        self.label = QLabel('Enter Number (e.g. 8801712... or +1234...):')
-        self.label.setStyleSheet("color: white; font-size: 14px; font-weight: bold;")
-        layout.addWidget(self.label)
+def show_about():
+    messagebox.showinfo("About", "Mobile Number Validation OSINT Tool\nCoded based on requested UI.")
 
-        self.entry_box = QLineEdit()
-        self.entry_box.setStyleSheet("background-color: white; color: black; font-size: 14px; padding: 6px;")
-        layout.addWidget(self.entry_box)
+root = tk.Tk()
+root.title("Mobile Number Validation")
+root.geometry("700x550")
+root.configure(bg="#f0f0f0")
 
-        self.track_btn = QPushButton('Track Number')
-        self.track_btn.setStyleSheet("background-color: #4CAF50; color: white; font-size: 14px; font-weight: bold; padding: 10px;")
-        self.track_btn.clicked.connect(self.check_number)
-        layout.addWidget(self.track_btn)
+top_frame = tk.Frame(root, bg="black")
+top_frame.pack(fill=tk.X)
 
-        self.output_box = QTextEdit()
-        self.output_box.setStyleSheet("background-color: #f4f4f4; color: black; font-family: Courier; font-size: 14px;")
-        self.output_box.setReadOnly(True)
-        layout.addWidget(self.output_box)
+banner = r"""
+   ___  _  _  __  __       ___  _  _  ____  ___  _  _  ____  ____  
+  /  \ | || ||  \/  |     / __|| || ||  __|| __|| |/ /|  __||  _ \ 
+ | || \| || || |\/| | ___| |   |    || |__ | |  | ' / | |__ | | \ |
+<< | \ \ || || |  | | ___| |   | || ||  __|| |  |  <  |  __|| |> >
+ | |  \_ ||_|| |  | |    | |__ | || || |__ | |__| . \ | |__ | | /  
+  \_\   \_|__|_|  |_|     \___||_||_||____||___||_|\_\|____||__/   
+"""
+lbl_banner = tk.Label(top_frame, text=banner, bg="black", fg="#00ff00", font=("Courier", 11, "bold"), justify=tk.CENTER)
+lbl_banner.pack(pady=5)
 
-        self.setLayout(layout)
+mid_frame = tk.Frame(root, bg="#f0f0f0")
+mid_frame.pack(pady=10)
 
-    def check_number(self):
-        raw_input = self.entry_box.text().strip()
-        self.output_box.clear()
+lbl_prompt = tk.Label(mid_frame, text="Enter your mobile number:", font=("Arial", 12), bg="#f0f0f0")
+lbl_prompt.pack()
 
-        if not raw_input:
-            QMessageBox.critical(self, "Error", "Please enter a phone number.")
-            return
+entry = tk.Entry(mid_frame, font=("Arial", 12), width=40, justify=tk.CENTER)
+entry.pack(pady=8)
 
-        cleaned_num = re.sub(r'[^\d+]', '', raw_input)
+btn_frame = tk.Frame(mid_frame, bg="#f0f0f0")
+btn_frame.pack(pady=5)
 
-        if not cleaned_num.startswith('+'):
-            cleaned_num = '+' + cleaned_num
+btn_check = tk.Button(btn_frame, text="Check", width=15, font=("Arial", 11), relief=tk.RAISED, bd=2, command=check_number)
+btn_check.grid(row=0, column=0, padx=15)
 
-        try:
-            parsed_num = phonenumbers.parse(cleaned_num)
-            
-            is_valid = phonenumbers.is_valid_number(parsed_num)
-            valid_str = "True" if is_valid else "False (Invalid/Incomplete)"
+btn_about = tk.Button(btn_frame, text="About", width=15, font=("Arial", 11), relief=tk.RAISED, bd=2, command=show_about)
+btn_about.grid(row=0, column=1, padx=15)
 
-            country_code = parsed_num.country_code
-            location_desc = geocoder.description_for_number(parsed_num, "en")
-            network = carrier.name_for_number(parsed_num, "en")
-            
-            local_fmt = phonenumbers.format_number(parsed_num, phonenumbers.PhoneNumberFormat.NATIONAL)
-            intl_fmt = phonenumbers.format_number(parsed_num, phonenumbers.PhoneNumberFormat.INTERNATIONAL)
-            
-            res = f"Validate Phone Number: {valid_str}\n"
-            res += f"Find Location: {location_desc or 'Unknown'}\n"
-            res += f"Country name: {location_desc or 'Unknown'}\n"
-            res += f"Country code: {country_code}\n"
-            res += f"Local format: {local_fmt}\n"
-            res += f"International number: {intl_fmt}\n"
-            res += f"Location: {location_desc or 'Unknown'}\n"
-            res += f"Validity: {valid_str}\n"
-            res += f"Carrier/Network: {network or 'Unknown'}\n"
-            
-            self.output_box.setText(res)
-            
-        except phonenumbers.NumberParseException:
-            QMessageBox.critical(self, "Error", "Invalid format. Ensure country code is included.")
-        except Exception as e:
-            QMessageBox.critical(self, "Error", str(e))
+output_frame = tk.Frame(root, bg="#f0f0f0")
+output_frame.pack(fill=tk.BOTH, expand=True, padx=15, pady=10)
 
-if __name__ == '__main__':
-    app = QApplication(sys.argv)
-    ex = PhoneTrackerApp()
-    ex.show()
-    sys.exit(app.exec_())
+output_text = tk.Text(output_frame, font=("Courier", 11), bg="white", fg="black", bd=2, relief=tk.SUNKEN)
+output_text.pack(fill=tk.BOTH, expand=True)
+
+root.mainloop()
