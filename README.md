@@ -6,7 +6,7 @@ CLI based tool to track location and more info of mobile numbers
 # Installation:
 # For Linux Users:
   
-      git clone.  https://github.com/machine1337/numverify.git
+      git clone.  https://github.com/md-shinha-sarder/phone-number-verify.git
     cd numverify
      python3 num.py
         
