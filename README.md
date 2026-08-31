@@ -6,15 +6,15 @@ CLI based tool to track location and more info of mobile numbers
 # Installation:
 # For Linux Users:
   
-      git clone.  https://github.com/md-shinha-sarder/phone-number-verify.git
-    cd numverify
-     python3 num.py
+       git clone  https://github.com/md-shinha-sarder/phone-number-verify.git
+    cd phone-number-verify
+    python3 num.py
         
 # For Windows Users:
         Download python3 on windows and install it
-        git clone https://github.com/machine1337/numverify.git
-        cd numverify
-        python num.py
+        git clone  https://github.com/md-shinha-sarder/phone-number-verify.git
+    cd phone-number-verify
+    python num.py
         
 # Features:-
    1. Validate Phone Number
