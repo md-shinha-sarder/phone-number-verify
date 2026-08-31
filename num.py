@@ -1,103 +1,94 @@
-import base64
+import sys
 import re
-import platform
 import os
 
-print("[*] Checking Requirements Module.....")
-if platform.system().startswith("Linux"):
-    try:
-        import requests
-    except ImportError:
-        os.system("python3 -m pip install requests -q -q -q")
-        import requests
-    try:
-        from pystyle import *
-    except:
-        os.system("python3 -m pip install pystyle -q -q -q")
-        from pystyle import *
-    try:
-        import colorama
-        from colorama import Fore, Back, Style
-    except ImportError:
-        os.system("python3 -m pip install colorama -q -q -q")
-        import colorama
-        from colorama import Fore, Back, Style
+try:
+    from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QLabel, QLineEdit, QPushButton, QTextEdit, QMessageBox
+    import phonenumbers
+    from phonenumbers import geocoder, carrier
+except ImportError:
+    os.system("pip install PyQt5 phonenumbers")
+    from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QLabel, QLineEdit, QPushButton, QTextEdit, QMessageBox
+    import phonenumbers
+    from phonenumbers import geocoder, carrier
 
-elif platform.system().startswith("Windows"):
-    try:
-        import requests
-    except ImportError:
-        os.system("python -m pip install requests -q -q -q")
-        import requests
-    try:
-        import colorama
-        from colorama import Fore, Back, Style
-    except ImportError:
-        os.system("python -m pip install colorama -q -q -q")
-        import colorama
-        from colorama import Fore, Back, Style
-    try:
-        from pystyle import *
-    except:
-        os.system("python -m pip install pystyle -q -q -q")
-        from pystyle import *
+class PhoneTrackerApp(QWidget):
+    def __init__(self):
+        super().__init__()
+        self.initUI()
 
-colorama.deinit()
-banner = Center.XCenter(r"""********************************************************************
-*        ___   _              __     __   _____ _  __     __        *
-*       / / \ | |_   _ _ __ __\ \   / /__|___ /(_)/ _|_   \ \       *
-*      | ||  \| | | | | '_ ` _ \ \ / / _ \ |_ \| | |_| | | | |      *
-*     < < | |\  | |_| | | | | | \ V /  __/___) | |  _| |_| |> >     *
-*      | ||_| \_|\__,_|_| |_| |_|\_/ \___|____/|_|_|  \__, | |      *
-*       \_\                                           |___/_/       *
-*                                                                   *
-*           OSINT TOOL TO FIND MOBILE INFO, LOCATION AND VALIDITY   *
-*                                                                   *
-*                    Coded By: Machine1337                          *
-*********************************************************************
-          Note: Enter Number with country code but without +
-                          (9123456789098)
-""")
-def is_valid_mobile_number(mobile_number):
-    pattern = re.compile(r"(?:(?:\+|00)91)?[6-9]\d{9}")
-    return pattern.match(mobile_number) is not None
+    def initUI(self):
+        self.setWindowTitle('Phone Number Tracker')
+        self.resize(480, 500)
+        self.setStyleSheet("background-color: #2b2b2b;")
+        
+        layout = QVBoxLayout()
 
-def check_number():
-    try:
-        os_name = "cls" if platform.system() == "Windows" else "clear" if platform.system() == "Linux" else "Unknown"
-        os.system(os_name)
-        print(Colorate.Vertical(Colors.green_to_yellow, banner, 2))
-        mobile_number = input(Fore.GREEN + '\n[+] Enter Mobile Number: ')
-        if is_valid_mobile_number(mobile_number):
-            message = base64.b64decode(
-                'aHR0cHM6Ly9hcGkuYXBpbGF5ZXIuY29tL251bWJlcl92ZXJpZmljYXRpb24vdmFsaWRhdGU/bnVtYmVyPQ=='.encode(
-                    'ascii')).decode('ascii')
-            url = f"{message}{mobile_number}"
-            hello = base64.b64decode('dGdDckRFOVF0QVF4Q1lvNnk4dHprMUdtQTJKbzBYZmI='.encode('ascii')).decode('ascii')
-            payload = {}
-            headers = {
-                "apikey": f"{hello}"
-            }
-            response = requests.request("GET", url, headers=headers, data=payload)
-            status_code = response.status_code
-            if status_code == 200:
-                response_json = response.json()
-                country_code = response_json["country_code"]
-                number = response_json["number"]
-                country_name = response_json["country_name"]
-                country_prefix = response_json["country_prefix"]
-                international_format = response_json["international_format"]
-                line_type = response_json["line_type"]
-                local_format = response_json["local_format"]
-                valid = response_json["valid"]
-                location = response_json["location"]
-                print(
-                    f"Country code: {country_code}\nNumber: {number}\nCountry name: {country_name}\nCountry prefix: {country_prefix}\nInternational format: {international_format}\nLine type: {line_type}\nLocal format: {local_format}\nLocation: {location}\nValid: {valid}")
-            else:
-                print(Fore.RED + f"Error: {status_code}")
-        else:
-            print(Fore.RED + '[*] Invalid Mobile Number....')
-    except KeyboardInterrupt:
-        print(Fore.RED+'\n[*] You Pressed The Wrong Button....')
-check_number()
-#coded by: machine1337
+        self.label = QLabel('Enter Number (e.g. 8801712... or +1234...):')
+        self.label.setStyleSheet("color: white; font-size: 14px; font-weight: bold;")
+        layout.addWidget(self.label)
+
+        self.entry_box = QLineEdit()
+        self.entry_box.setStyleSheet("background-color: white; color: black; font-size: 14px; padding: 6px;")
+        layout.addWidget(self.entry_box)
+
+        self.track_btn = QPushButton('Track Number')
+        self.track_btn.setStyleSheet("background-color: #4CAF50; color: white; font-size: 14px; font-weight: bold; padding: 10px;")
+        self.track_btn.clicked.connect(self.check_number)
+        layout.addWidget(self.track_btn)
+
+        self.output_box = QTextEdit()
+        self.output_box.setStyleSheet("background-color: #f4f4f4; color: black; font-family: Courier; font-size: 14px;")
+        self.output_box.setReadOnly(True)
+        layout.addWidget(self.output_box)
+
+        self.setLayout(layout)
+
+    def check_number(self):
+        raw_input = self.entry_box.text().strip()
+        self.output_box.clear()
+
+        if not raw_input:
+            QMessageBox.critical(self, "Error", "Please enter a phone number.")
+            return
+
+        cleaned_num = re.sub(r'[^\d+]', '', raw_input)
+
+        if not cleaned_num.startswith('+'):
+            cleaned_num = '+' + cleaned_num
+
+        try:
+            parsed_num = phonenumbers.parse(cleaned_num)
+            
+            is_valid = phonenumbers.is_valid_number(parsed_num)
+            valid_str = "True" if is_valid else "False (Invalid/Incomplete)"
+
+            country_code = parsed_num.country_code
+            location_desc = geocoder.description_for_number(parsed_num, "en")
+            network = carrier.name_for_number(parsed_num, "en")
+            
+            local_fmt = phonenumbers.format_number(parsed_num, phonenumbers.PhoneNumberFormat.NATIONAL)
+            intl_fmt = phonenumbers.format_number(parsed_num, phonenumbers.PhoneNumberFormat.INTERNATIONAL)
+            
+            res = f"Validate Phone Number: {valid_str}\n"
+            res += f"Find Location: {location_desc or 'Unknown'}\n"
+            res += f"Country name: {location_desc or 'Unknown'}\n"
+            res += f"Country code: {country_code}\n"
+            res += f"Local format: {local_fmt}\n"
+            res += f"International number: {intl_fmt}\n"
+            res += f"Location: {location_desc or 'Unknown'}\n"
+            res += f"Validity: {valid_str}\n"
+            res += f"Carrier/Network: {network or 'Unknown'}\n"
+            
+            self.output_box.setText(res)
+            
+        except phonenumbers.NumberParseException:
+            QMessageBox.critical(self, "Error", "Invalid format. Ensure country code is included.")
+        except Exception as e:
+            QMessageBox.critical(self, "Error", str(e))
+
+if __name__ == '__main__':
+    app = QApplication(sys.argv)
+    ex = PhoneTrackerApp()
+    ex.show()
+    sys.exit(app.exec_())
